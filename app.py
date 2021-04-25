@@ -1,34 +1,73 @@
 #!/usr/bin/env python3
 import os
 
-from aws_cdk import core as cdk
-
-# For consistency with TypeScript code, `cdk` is the preferred import name for
-# the CDK's core module.  The following line also imports it as `core` for use
-# with examples from the CDK Developer's Guide, which are in the process of
-# being updated to use `cdk`.  You may delete this import if you don't need it.
 from aws_cdk import core
 
-from aws_bootstrap_kit.aws_bootstrap_kit_stack import AwsBootstrapKitStack
-
+from aws_bootstrap_kit.aws_bootstrap_kit_stack import AWSBootstrapKitLandingZonePipelineStack
+from aws_bootstrap_kit.aws_bootstrap_kit_stack import AWSBootstrapKitLandingZoneStage
 
 app = core.App()
-AwsBootstrapKitStack(app, "AwsBootstrapKitStack",
-    # If you don't specify 'env', this stack will be environment-agnostic.
-    # Account/Region-dependent features and context lookups will not work,
-    # but a single synthesized template can be deployed anywhere.
 
-    # Uncomment the next line to specialize this stack for the AWS Account
-    # and Region that are implied by the current CLI configuration.
+# nestedOU = [
+#     {
+#         name: 'SharedServices',
+#         accounts: [
+#             {
+#                 name: 'CICD',
+#                 type: AccountType.CICD
+#             }
+#         ]
+#     },
+#     {
+#         name: 'SDLC',
+#         accounts: [
+#             {
+#                 name: 'Dev',
+#                 type: AccountType.PLAYGROUND
+#             },
+#             {
+#                 name: 'Staging',
+#                 type: AccountType.STAGE,
+#                 stageName: 'staging',
+#                 stageOrder: 1,
+#                 hostedServices: ['ALL']
+#             }
+#         ]
+#     },
+#     {
+#         name: 'Prod',
+#         accounts: [
+#             {
+#                 name: 'Prod',
+#                 type: AccountType.STAGE,
+#                 stageName: 'prod',
+#                 stageOrder: 2,
+#                 hostedServices: ['ALL']
+#             }
+#         ]
+#     }
+# ]
+email = app.node.try_get_context("email")
+rootHostedZoneDNSName = app.node.try_get_context("domain_name")
+thirdPartyProviderDNSUsed = app.node.try_get_context("third_party_provider_dns_used")
+forceEmailVerification = app.node.try_get_context("force_email_verification")
+pipelineDeployableRegions = app.node.try_get_context("pipeline_deployable_regions")
+nestedOU = ''
 
-    #env=core.Environment(account=os.getenv('CDK_DEFAULT_ACCOUNT'), region=os.getenv('CDK_DEFAULT_REGION')),
-
-    # Uncomment the next line if you know exactly what Account and Region you
-    # want to deploy the stack to. */
-
-    #env=core.Environment(account='123456789012', region='us-east-1'),
-
-    # For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html
+AWSBootstrapKitLandingZoneStage(app, 'Prod',
+    email,
+    forceEmailVerification,
+    nestedOU,
+    rootHostedZoneDNSName,
+    thirdPartyProviderDNSUsed
     )
 
+AWSBootstrapKitLandingZonePipelineStack(app, "AWSBootstrapKit-LandingZone-PipelineStack",
+    email,
+    forceEmailVerification,
+    pipelineDeployableRegions,
+    nestedOU,
+    rootHostedZoneDNSName,
+    thirdPartyProviderDNSUsed
+    )
 app.synth()
